@@ -6,14 +6,15 @@ import subprocess
 import pyautogui
 import json
 from datetime import datetime, timedelta
-from utils.screenpipe import click_by_label, type_into_field, type_text_into_active_window
+from utils.screenpipe import click_by_label, type_into_field, type_text_into_active_window, list_ui_elements,launch_app_via_terminator
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL
 import ctypes
-from utils.api import ask_groq
+from utils.api import ask_groq, is_screen_vision_command
 from utils.code import write_code_to_vscode
+from utils.vision import analyze_screen_with_groq_vision
 
-# ----------- Volume Control Functions -------------
+# ----------- Volume Control -------------
 def get_volume_interface():
     devices = AudioUtilities.GetSpeakers()
     interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
@@ -70,7 +71,7 @@ def set_timer_or_alarm(command):
 
     return None
 
-# ----------- Launch Apps, Save Files -------------
+# ----------- Launch Apps -------------
 def launch_app(app_name):
     try:
         subprocess.Popen(f'start "" "{app_name}"', shell=True)
@@ -78,6 +79,7 @@ def launch_app(app_name):
     except Exception as e:
         return f"❌ Failed to launch {app_name}: {e}"
 
+# ----------- Save Files -------------
 def save_to_file(filename, content):
     if not filename.endswith(".txt") and not filename.endswith(".py"):
         filename += ".txt"
@@ -89,22 +91,99 @@ def save_to_file(filename, content):
         return f"❌ Error saving to file: {e}"
 
 # ----------- Main Task Handler -------------
-def handle_task(command):
-    import re
-    import json
-    from utils.api import ask_groq
-    from utils.code import write_code_to_vscode
-    from utils.screenpipe import click_by_label, type_into_field, type_text_into_active_window, list_ui_elements
-    from utils.tasks import set_timer_or_alarm, adjust_volume, take_screenshot
-    from utils.vision import analyze_screen_with_groq_vision
+def handle_task(command, command_type=None):
+    cmd = command.lower().strip()
 
-    cmd = command.lower()
+    # If not provided, classify now
+    if not command_type:
+        from utils.api import rule_based_classify_command
+        command_type = rule_based_classify_command(cmd)
 
-    # 🔍 Vision-based screen help
-    if any(phrase in cmd for phrase in [
-        "what's on my screen", "what do you see", "help with this", "explain this",
-        "solve this", "answer this question", "solve the problem on the screen", "what is this question"
-    ]):
+    # 🔍 Question → show popup
+    if command_type == "question":
+        generated = ask_groq(
+            command.strip().capitalize(),
+            system_message="You are a helpful assistant. Answer clearly and conversationally. No markdown or links."
+        )
+        return {
+            "action": "message_only",
+            "target": "",
+            "content": generated
+        }
+
+    # 💻 Code generation
+    if command_type == "code":
+        code = ask_groq(
+            command.strip(),
+            system_message="You are a coding assistant. Return ONLY the code — no explanation, no markdown."
+        )
+        code = re.sub(r"```(?:\w+)?", "", code).replace("```", "").strip()
+        write_code_to_vscode(code,cmd)
+        filename = write_code_to_vscode(code, cmd)
+        return {
+                "action": "save_file",
+                "target": filename,
+                "content": code
+            }
+
+
+
+    # 📄 Write to specific file
+    if command_type == "write_file":
+        match = re.match(r"write\s+(.+?)\s+(?:in|into)\s+([\w\-.]+\.(txt|py|md|log|json|cpp|html))", cmd)
+        if match:
+            content, filename = match.group(1).strip(), match.group(2).strip()
+            generated = ask_groq(
+                f"Write an article or content about: {content}",
+                system_message="You are a helpful assistant. Respond ONLY with the requested content — no markdown or explanation."
+            )
+            return {"action": "save_file", "target": filename, "content": generated}
+
+    # 🧠 Groq Vision: Describe screen
+    if command_type == "screen_vision":
+        result = analyze_screen_with_groq_vision(prompt=command , mode="screen_qa")
+        return {
+            "action": "message_only",
+            "target": "",
+            "content": result
+        }
+
+
+    # 🧾 List UI elements
+    if "list elements" in cmd or "list screen elements" in cmd:
+        return {
+            "action": "message_only",
+            "target": "",
+            "content": list_ui_elements()
+        }
+
+    # 🖱️ Click label
+    if match := re.search(r'click (?:on )?(.*)', cmd):
+        return {
+            "action": "write_only",
+            "target": "",
+            "content": click_by_label(match.group(1).strip())
+        }
+
+    # ⌨️ Type X into Y
+    if match := re.search(r'type (.+?) into (.+)', cmd):
+        return {
+            "action": "write_only",
+            "target": "",
+            "content": type_into_field(match.group(2).strip(), match.group(1).strip())
+        }
+
+    # ⌨️ Type into active window
+    if match := re.search(r'type here (.+)', cmd):
+        type_text_into_active_window(match.group(1).strip())
+        return {
+            "action": "write_only",
+            "target": "",
+            "content": "⌨️ Typing into active window... (Click to stop)"
+        }
+
+    # 🧠 Groq Vision: Describe screen
+    if is_screen_vision_command(cmd):
         result = analyze_screen_with_groq_vision(prompt=command)
         return {
             "action": "message_only",
@@ -112,51 +191,28 @@ def handle_task(command):
             "content": result
         }
 
-    # ✍️ Insert plain text into current window
-    if match := re.match(r"write\s+(.+)", cmd):
-        return {"action": "insert_text", "target": "", "content": match.group(1).strip()}
+    # ✍️ Write plain text
+    if re.search(r"(type|write).*?(here|over here|on screen|in active window)", cmd.lower()):
+        return {
+            "action": "insert_text",
+            "target": "",
+            "content": cmd.strip()  # ✅ Send full command to screenpipe
+    }
 
-    # 📄 Write file with generated content
-    match = re.match(r"(.+?)\s+(?:in|into)\s+([\w\-.]+\.(txt|py|md|log))", cmd)
-    if match:
-        prompt, filename = match.group(1).strip(), match.group(2).strip()
+    # 📄 Write to specific file
+    if match := re.match(r"write\s+(.*?)\s+(?:in|into)\s+([\w\-.]+\.(txt|py|md|log|json|cpp|html))", cmd):
+        content, filename = match.group(1).strip(), match.group(2).strip()
         generated = ask_groq(
-            f"Write {prompt}. Only return the result.",
-            system_message="You are a creative AI. Respond ONLY with the content — no markdown or explanation."
+            f"Write an article or content about: {content}",
+            system_message="You are a helpful assistant. Respond ONLY with the requested content — no markdown or explanation."
         )
         return {"action": "save_file", "target": filename, "content": generated}
-        
+
+    # 🔍 Web search
     if match := re.search(r'(search|look up|google)\s+(.*)', cmd):
-            query = match.group(2).strip()
-            url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-            return {
-                "action": "open_url",
-                "target": url,
-                "content": ""
-            }
-    # 👨‍💻 Code generation
-    if match := re.match(r"(write|generate|make)\s+(a|an)?\s*(python|javascript|java|c\+\+|c|html|css|bash|sql|rust|go|typescript)\s+(.+)", cmd):
-        prompt = match.group(0)
-        code = ask_groq(
-            f"{prompt}. Only return the code block, no explanation.",
-            system_message="You are a coding assistant. Return ONLY the code — no explanation, no markdown."
-        )
-        code = re.sub(r"```(?:\w+)?", "", code).replace("```", "").strip()
-        write_code_to_vscode(code)
-        return {"action": "write_only", "target": "", "content": "✅ Code generated and opened in VS Code."}
-
-    # 🖱️ Click UI label
-    if match := re.search(r'click (?:on )?(.*)', cmd):
-        return {"action": "write_only", "target": "", "content": click_by_label(match.group(1).strip())}
-
-    # ⌨️ Type into field
-    if match := re.search(r'type (.+) into (.+)', cmd):
-        return {"action": "write_only", "target": "", "content": type_into_field(match.group(2).strip(), match.group(1).strip())}
-
-    # ⌨️ Type into active window
-    if match := re.search(r'type here (.+)', cmd):
-        type_text_into_active_window(match.group(1).strip())
-        return {"action": "write_only", "target": "", "content": f"⌨️ Typing '{match.group(1).strip()}' into active window."}
+        query = match.group(2).strip()
+        url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+        return {"action": "open_url", "target": url, "content": ""}
 
     # 🎛️ Screenshot
     if "screenshot" in cmd:
@@ -180,25 +236,17 @@ def handle_task(command):
     alarm_result = set_timer_or_alarm(cmd)
     if alarm_result:
         return {"action": "write_only", "target": "", "content": alarm_result}
+        
+    # 📊 Show smart dashboard
+    if any(kw in cmd for kw in ["show analytics", "display analytics", "open dashboard", "show dashboard", "display screen time", "show screen time"]):
+        try:
+            subprocess.Popen(["python", "utils/tk_dashboard.py"])
+            return {"action": "write_only", "target": "", "content": "📊 Opening Smart Activity Dashboard..."}
+        except Exception as e:
+            return {"action": "write_only", "target": "", "content": f"❌ Failed to open dashboard: {e}"}
 
-    # 🚀 App launching
-    if match := re.search(r'\b(open|launch|start)\s+([\w\s]+)', cmd):
-        return {"action": "open_app", "target": match.group(2).strip(), "content": ""}
-
-    # 💬 Natural language "tell me..."
-    if cmd.startswith("tell me ") or cmd.startswith("tell "):
-        prompt = command.strip().capitalize()
-        generated = ask_groq(
-            prompt,
-            system_message="You are a creative assistant. Respond conversationally and directly. Avoid links or markdown. Just give a natural response in plain text."
-        )
-        return {
-            "action": "message_only",
-            "target": "",
-            "content": generated
-        }
-
-    # 🧠 Fallback to Groq instruction
+    # 🧠 Fallback: let Groq decide
+    # 🧠 Fallback: let Groq decide
     response = ask_groq(command)
     print(f"🤖 Groq Response: {response}")
 
@@ -208,68 +256,43 @@ def handle_task(command):
             raise json.JSONDecodeError("No JSON found", response, 0)
 
         action_obj = json.loads(json_match.group(0))
-        action = action_obj.get("action")
-        target = action_obj.get("target")
-        content = action_obj.get("content")
+        action = action_obj.get("action", "").lower()
+        target = action_obj.get("target", "")
+        content = action_obj.get("content", "")
 
-        if action:
+        # CASE: Treat "other" as question
+        if action == "other":
             return {
-                "action": action,
-                "target": target or "",
-                "content": content or ""
+                "action": "message_only",
+                "target": "",
+                "content": ask_groq(
+                    command,
+                    system_message="You are a helpful assistant. Answer the question clearly. No markdown or extras."
+                )
             }
 
+        # CASE: Action is known and valid
+        if action in [
+            "open_app", "insert_text", "message_only", "write_only", "save_file", 
+            "open_url", "screen_vision"
+        ]:
+            return {
+                "action": action,
+                "target": target,
+                "content": content
+            }
+
+        # Unknown action
         return {
-            "action": "write_only",
+            "action": "message_only",
             "target": "",
-            "content": f"I couldn't understand how to handle this task: {command}"
+            "content": f"⚠️ Sorry, I don't know how to handle that action: '{action}'"
         }
 
     except json.JSONDecodeError:
         print("⚠️ Failed to parse Groq response as JSON.")
         return {
-            "action": "write_only",
+            "action": "message_only",
             "target": "",
-            "content": f"I couldn't parse Groq's response for: {command}"
+            "content": "⚠️ I couldn't understand the response. Please try rephrasing your command."
         }
-
-
-
-    
-def generate_and_type_content(command):
-    """
-    Uses Groq to convert a natural language command into a file-writing action.
-    Expects Groq to return a JSON like:
-    {
-      "file_name": "notes.txt",
-      "content": "This is what should go into the file."
-    }
-    Then writes the content to the file.
-    """
-    system_message = (
-        "You are a file-writing assistant. Given a user command like "
-        "'write hello in text.txt' or 'save this to file xyz.txt', respond ONLY with a JSON object "
-        "in this format: {\"file_name\": \"filename.txt\", \"content\": \"what to write in the file\"}. "
-        "Do not include any other explanation, just the raw JSON."
-    )
-
-    response = ask_groq(command, system_message=system_message)
-
-    try:
-        data = json.loads(response)
-
-        file_name = data.get("file_name")
-        content = data.get("content")
-
-        if not file_name or not content:
-            return "❌ Invalid response format from Groq."
-
-        with open(file_name, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        return f"✅ Successfully wrote to {file_name}"
-
-    except json.JSONDecodeError:
-        return f"❌ Groq did not return valid JSON:\n{response}"
-    except Exception as e:
-        return f"❌ Failed to write to file: {e}"

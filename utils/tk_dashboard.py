@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from utils.assistant_popup_ui import AssistantPopup
 from utils.tasks import handle_task
-from utils.execute_ai_task import execute_ai_task
+from utils.vision import analyze_screen_with_groq_vision
+from utils.api import rule_based_classify_command as classify_command, ask_groq
 
 LOG_FILE = "activity_log.jsonl"
 
@@ -19,8 +19,6 @@ MODERN_COLORS = [
     "#ff6f61", "#6b5b95", "#88b04b", "#f7cac9", "#92a8d1",
     "#955251", "#b565a7", "#009b77", "#dd4124", "#45b8ac"
 ]
-
-from utils.api import classify_command, ask_groq
 
 def show_chat_popup(question, answer):
     chat_win = tk.Toplevel()
@@ -37,7 +35,6 @@ def show_chat_popup(question, answer):
     text.insert("end", f"You: {question}\n\n", "question")
     text.insert("end", f"Assistant: {answer}\n", "answer")
     text.config(state="disabled")
-
 
 def load_logs():
     if not os.path.exists(LOG_FILE):
@@ -67,9 +64,14 @@ def aggregate(logs):
     usage = defaultdict(int)
     details = defaultdict(list)
     for entry in logs:
-        title = entry["title"]
+        title = entry.get("title")
+        duration_str = entry.get("duration")
+
+        if not title or not duration_str:
+            continue  # Skip malformed or incomplete logs
+
         base_app = title.split(" - ")[-1]
-        duration = parse_duration(entry["duration"])
+        duration = parse_duration(duration_str)
         usage[base_app] += duration
         details[base_app].append(entry)
     return usage, details
@@ -84,7 +86,7 @@ def launch_dashboard():
     logs = load_logs()
     if not logs:
         root = tk.Tk()
-        root.title("GroqMate Dashboard")
+        root.title("Smart Screen-Time Analytics")
         root.configure(bg="#1e1e2e")
 
         msg = tk.Label(root, text="⚠️ No activity logs yet.", font=("Segoe UI", 14), bg="#1e1e2e", fg="#ffffff")
@@ -98,11 +100,10 @@ def launch_dashboard():
     app_colors = assign_colors(usage.keys())
 
     root = tk.Tk()
-    root.title("GroqMate Analytics Dashboard")
+    root.title("Smart Screen-Time Analytics")
     root.geometry("1000x600")
     root.configure(bg="#1e1e2e")
-    root.overrideredirect(True)
-
+    root.overrideredirect(True)  # Temporarily disabled to avoid auto-closing
     root.bind("<Escape>", lambda e: root.destroy())
 
     top_bar = tk.Frame(root, bg="#181824", height=30)
@@ -132,7 +133,7 @@ def launch_dashboard():
     right_frame = tk.Frame(root, bg="#1e1e2e", width=500)
     right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
-    title_label = tk.Label(left_frame, text="🧠 GroqMate Activity Insights", font=("Segoe UI", 16, "bold"), bg="#1e1e2e", fg="#ffffff")
+    title_label = tk.Label(left_frame, text="🧠  Activity Insights", font=("Segoe UI", 16, "bold"), bg="#1e1e2e", fg="#ffffff")
     title_label.pack(pady=(10, 0))
 
     fig, ax = plt.subplots(figsize=(5, 5), facecolor="#1e1e2e")
@@ -146,14 +147,28 @@ def launch_dashboard():
     segment_info_label = tk.Label(left_frame, text="", font=("Segoe UI", 12, "bold"), bg="#1e1e2e", fg="#ffffff", wraplength=400)
     segment_info_label.place(relx=0.5, rely=0.85, anchor="center")
 
-    back_btn = tk.Button(left_frame, text="← All Apps", font=("Segoe UI", 10),
-                         bg="#2a2a3b", fg="#bbbbbb",
-                         activebackground="#3a3a4f", activeforeground="#ffffff",
-                         bd=0, relief="flat",
-                         command=lambda: draw_donut())
-    back_btn.pack(pady=(10, 0))
+    back_btn = tk.Button(
+    left_frame,
+    text="← All Apps",
+    font=("Segoe UI", 10, "bold"),
+    bg="#1e1e2e",
+    fg="#80dfff",
+    activebackground="#2a2a3b",
+    activeforeground="#ffffff",
+    relief="flat",
+    bd=0,
+    highlightthickness=0,
+    highlightbackground="#1e1e2e",
+    highlightcolor="#1e1e2e",
+    borderwidth=0,
+    command=lambda: draw_donut()
+    )
+    back_btn.place(relx=0.02, rely=0.02)  # always visible, top-left
+
 
     def draw_donut(app_name=None):
+        # Always show back button clearly in top-left
+       
         ax.clear()
         ax.set_facecolor("#1e1e2e")
         segment_info_label.config(text="")
@@ -191,6 +206,7 @@ def launch_dashboard():
             canvas.segment_labels = labels
             canvas.segment_durations = times
             center_label.config(text=app_name)
+           
         else:
             labels = list(usage.keys())
             times = [usage[k] for k in labels]
@@ -254,8 +270,6 @@ def launch_dashboard():
     )
     command_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10), ipady=6)
 
-
-
     def run_command():
         cmd = command_entry.get().strip()
         if cmd:
@@ -270,20 +284,19 @@ def launch_dashboard():
                     )
                     show_chat_popup(cmd, answer)
                 except Exception as e:
-                    popup = AssistantPopup()
-                    popup.set_response(f"❌ Question error: {e}", auto_close=False)
-
+                    show_chat_popup("Error", f"❌ Question error: {e}")
             else:
                 try:
-                    popup = AssistantPopup()
-                    popup.set_processing(cmd)
                     result = handle_task(cmd)
-                    message = execute_ai_task(result)
-                    popup.set_response(message, auto_close=False)
+                    message = result.get("content", "✅ Task complete")
+                    show_chat_popup(cmd, message)
                 except Exception as e:
-                    popup = AssistantPopup()
-                    popup.set_response(f"❌ Task error: {e}", auto_close=False)
+                    show_chat_popup("Error", f"❌ Task error: {e}")
 
-
+    send_btn = tk.Button(command_frame, text="Send", font=("Segoe UI", 10), command=run_command,
+                         bg="#3a3a4f", fg="#ffffff", activebackground="#4a4a5f", activeforeground="#ffffff",
+                         bd=0, padx=20, pady=6)
+    send_btn.pack(side=tk.RIGHT)
+    root.mainloop()
 if __name__ == "__main__":
     launch_dashboard()

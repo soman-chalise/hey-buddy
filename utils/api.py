@@ -1,8 +1,9 @@
+# === api.py ===
 import os
+import re
+import json
 import requests
 from dotenv import load_dotenv
-import json
-import re
 
 load_dotenv()
 
@@ -47,22 +48,65 @@ def ask_groq(prompt, system_message=None):
         print(f"❌ Error contacting Groq API: {e}")
         return "Error occurred while processing your request."
 
-def classify_command(command):
-    classification_prompt = (
-        f"Classify the following command. Respond ONLY with JSON:\n"
-        f'{{"type": "task"|"question"|"other", "reason": "<short reason>"}}\n\n'
-        f"Command: {command}"
-    )
+def rule_based_classify_command(cmd: str) -> str:
+    cmd = cmd.lower().strip()
+    cmd = re.sub(r'^"|"$', '', cmd).strip()
 
-    response = ask_groq(classification_prompt)
-    print(f"📦 Raw classification response: {response}")
+    # 🎯 Prioritize ending-based screen phrases
+    screen_phrases = [
+        "on my screen", "on the screen", "in the screen", 
+        "what's on my screen", "what is on the screen", "solve on screen"
+    ]
+    if any(cmd.endswith(phrase) for phrase in screen_phrases):
+        return "screen_vision"
 
-    try:
-        data = json.loads(response)
-        return data.get("type", "unknown").lower()
-    except json.JSONDecodeError:
-        print("⚠️ Failed to parse classification JSON.")
-        return "unknown"
+    # 💬 Questions
+    if any(kw in cmd for kw in ["tell me", "give me", "what is", "who is", "how does", "explain"]):
+        return "question"
+
+    # 💻 Code
+    if re.search(r"(generate|write|make)\s+(a|an)?\s*(python|java(script)?|html|css|sql|bash|go|c\+\+|c|rust|typescript)( code)?", cmd):
+        return "code"
+
+    # ✍️ Write into active window
+    if re.search(r"(type|write).*(here|active window|current screen|over here)", cmd):
+        return "write_active"
+
+    # 📄 Write into file
+    if re.search(r"write.*into.*\.(txt|py|md|log)", cmd):
+        return "write_file"
+
+    # 🧾 Field typing
+    if re.search(r"type .+ into .+", cmd):
+        return "type_into_field"
+
+    # 🖱️ Click
+    if re.search(r"click( on)? .+", cmd):
+        return "click"
+
+    # 🔊 Volume
+    if re.search(r"set volume to|volume up|volume down|increase volume|decrease volume", cmd):
+        return "volume"
+
+    # ⏰ Timer or alarm
+    if re.search(r"(set timer|set alarm|remind me)", cmd):
+        return "alarm_timer"
+
+    # 📋 UI listing
+    if re.search(r"list elements|screen elements|show screen elements", cmd):
+        return "list_elements"
+
+    # 🌐 Web search
+    if re.search(r"(search|google|look up)\s+.+", cmd):
+        return "search_web"
+
+    # 🚀 App open
+    if re.search(r"\b(open|launch|start)\s+[\w\s]+", cmd):
+        return "open_app"
+
+    return "other"
+
+
 
 def analyze_write_command(command):
     cmd = command.lower().strip()
@@ -73,7 +117,6 @@ def analyze_write_command(command):
         "details": {}
     }
 
-    # Case 1: Writing to a file
     match_file = re.search(r'(?:in|into)\s+([\w\-.]+\.(txt|py|md|log|cpp|js|html))', cmd)
     if match_file:
         filename = match_file.group(1)
@@ -82,12 +125,10 @@ def analyze_write_command(command):
         response["details"]["exists"] = os.path.exists(filename)
         return response
 
-    # Case 2: Writing into active window
     if any(word in cmd for word in ["here", "over here", "current window", "current screen", "active window"]):
         response["mode"] = "active_window"
         return response
 
-    # Case 3: Just write something
     if cmd.startswith("write"):
         content = cmd[len("write"):].strip()
         response["mode"] = "inline"
@@ -117,3 +158,21 @@ def analyze_search_command(command):
         return result
 
     return {"type": "unknown"}
+def is_screen_vision_command(cmd: str) -> bool:
+    cmd = cmd.lower().strip()
+    screen_phrases = [
+        "what's on my screen", "describe screen", "explain this",
+        "solve this", "solve the problem", "analyze the screen", "help with this",
+        "solve on screen"
+    ]
+    if any(phrase in cmd for phrase in screen_phrases):
+        return True
+
+    patterns = [
+        r"solve (.+?) on screen",
+        r"solve (question|problem) \w+",
+        r"help me with (question|problem)? \w+",
+        r"answer (question|problem)? \w+",
+        r"what (is|does) (this|that|it)"
+    ]
+    return any(re.search(p, cmd) for p in patterns)

@@ -1,3 +1,4 @@
+
 # utils/activity_tracker.py
 
 import time
@@ -38,7 +39,7 @@ def summarize_screenshot():
     screenshot_path = "current_screen.png"
     screenshot.save(screenshot_path)
     try:
-        summary = analyze_screen_with_groq_vision(image_path=screenshot_path, short=True)
+        summary = analyze_screen_with_groq_vision(image_path=screenshot_path, mode="dashboard")
         return summary
     except Exception as e:
         return f"⚠️ Groq Vision error: {e}"

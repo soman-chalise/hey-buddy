@@ -18,7 +18,7 @@ def listen_for_wake_word():
 
     porcupine = pvporcupine.create(
         access_key=access_key,
-        keyword_paths=[keyword_path]  # 👈 Corrected keyword!
+        keyword_paths=[keyword_path]  
     )
 
     pa = pyaudio.PyAudio()

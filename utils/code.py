@@ -1,47 +1,59 @@
-import subprocess
 import os
 import re
+from utils.api import ask_groq
 
-# Mapping of language keywords to file extensions
-EXTENSIONS = {
-    "python": ".py",
-    "javascript": ".js",
-    "html": ".html",
-    "css": ".css",
-    "c++": ".cpp",
-    "cpp": ".cpp",
-    "c": ".c",
-    "java": ".java",
-    "typescript": ".ts",
-    "go": ".go",
-    "rust": ".rs",
-    "bash": ".sh",
-    "shell": ".sh",
-    "json": ".json",
-    "sql": ".sql",
+LANG_EXTENSIONS = {
+    "python": "py",
+    "c plus plus":"cpp",
+    "c++": "cpp",
+    "cpp": "cpp",
+    "c": "c",
+    "java": "java",
+    "javascript": "js",
+    "js": "js",
+    "html": "html",
+    "bash": "sh"
 }
 
-def detect_language_and_extension(code: str, default_ext=".txt"):
-    for lang, ext in EXTENSIONS.items():
-        if re.search(rf"\b{lang}\b", code, re.IGNORECASE):
-            return lang, ext
-    return "text", default_ext
+def extract_filename_from_prompt(prompt):
+    cleaned = re.sub(r"[^a-zA-Z0-9 ]", "", prompt.lower())
+    keywords = [word for word in cleaned.split() if word not in {
+        "generate", "a", "an", "the", "code", "to", "for", "in", "on", "of", "write"
+    }]
+    if not keywords:
+        return "generated_code"
+    return "_".join(keywords[:4])
 
-def write_code_to_vscode(code: str, base_filename="generated_code"):
-    lang, ext = detect_language_and_extension(code)
-    filename = f"{base_filename}{ext}"
+def write_code_to_vscode(code: str, prompt: str):
+    lang = "txt"
+    for key in LANG_EXTENSIONS:
+        if key in prompt.lower():
+            lang = LANG_EXTENSIONS[key]
+            break
+
+    base_name = extract_filename_from_prompt(prompt)
+    filename = f"{base_name}.{lang}"
 
     with open(filename, "w", encoding="utf-8") as f:
         f.write(code)
 
-    print(f"✅ Code saved as {filename} ({lang})")
+    os.system(f"code {filename}")
+    return filename
 
-    try:
-        subprocess.Popen(["code", filename])
-    except FileNotFoundError:
-        # Try default install location if 'code' command isn't in PATH
-        vscode_path = r"C:\Users\soman\AppData\Local\Programs\Microsoft VS Code\Code.exe"
-        if os.path.exists(vscode_path):
-            subprocess.Popen([vscode_path, filename])
-        else:
-            print("❌ VS Code not found. Please make sure it's installed.")
+def generate_code_from_command(cmd):
+    print(f"🧠 Asking Groq to generate code for: '{cmd}'")
+
+    code = ask_groq(
+        cmd,
+        system_message=(
+            "You are a code assistant. Generate only the code in response to the user's request. "
+            "Do not include explanations, markdown formatting, or comments unless explicitly requested."
+        )
+    )
+
+    filename = write_code_to_vscode(code, cmd)
+    return {
+        "action": "save_file",
+        "target": filename,
+        "content": code
+    }
