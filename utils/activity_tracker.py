@@ -1,6 +1,3 @@
-
-# utils/activity_tracker.py
-
 import time
 import pygetwindow as gw
 from datetime import datetime
@@ -10,17 +7,15 @@ import json
 from PIL import ImageGrab
 from tkinter import messagebox, Tk
 
-# Fix import issues if run directly
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.vision import analyze_screen_with_groq_vision  # ✅ Use Groq Vision for screenshot summary
 
-# === CONFIG ===
+
 LOG_FILE = "activity_log.jsonl"
 current_app = None
 start_time = time.time()
-
-# === FUNCTIONS ===
 
 def get_active_window_title():
     try:
@@ -76,7 +71,6 @@ def track_activity(interval=5):
                 except Exception as e:
                     summary = f"⚠️ Vision error: {e}"
 
-                # Log everything locally
                 log_event_locally(current_app, format_duration(duration), summary)
 
             current_app = active
@@ -84,6 +78,5 @@ def track_activity(interval=5):
 
         time.sleep(interval)
 
-# === TEST RUN ===
 if __name__ == "__main__":
     track_activity(interval=10)

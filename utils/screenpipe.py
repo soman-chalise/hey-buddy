@@ -1,4 +1,3 @@
-# === screenpipe.py (Restored original working logic) ===
 import subprocess
 import requests
 import time
@@ -8,7 +7,6 @@ from desktop_use import DesktopUseClient, Locator, ApiError, sleep
 import threading
 import pyautogui
 
-# ✅ Ensure Terminator's server.exe is running
 def ensure_terminator_server_running():
     exe_name = "server.exe"
     for proc in psutil.process_iter(['name']):
@@ -30,7 +28,6 @@ def ensure_terminator_server_running():
 ensure_terminator_server_running()
 client = DesktopUseClient()
 
-# 🖱️ Click by label
 def click_by_label(label):
     try:
         element = client.locator(f'name:{label}')
@@ -41,7 +38,6 @@ def click_by_label(label):
     except Exception as e:
         return f"❌ Failed to click '{label}': {e}"
 
-# ⌨️ Type into field
 from desktop_use import DesktopUseClient, sleep, ApiError
 
 client = DesktopUseClient()
@@ -55,10 +51,6 @@ def type_into_field(label, text):
         return f"⌨️ Typed '{text}' into '{clean_label}'"
     except Exception as e:
         return f"❌ Failed to type into '{label}': {e}"
-
-# --------------------
-# Type into the active window (interruptible)
-# --------------------
 
 def ask_groq_typing_prompt(user_input):
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -179,7 +171,6 @@ def type_text_into_active_window(full_command):
                 print("⚠️ Empty command. Skipping.")
                 return
 
-            # ✅ Forgiving detection (if 'write' or 'type' in first 3 words)
             if "type" in input_words[:3]:
                 system_prompt = (
                     "You are a typing assistant. Remove 'type' and any filler like 'here', 'over here', etc. "
@@ -219,7 +210,7 @@ def type_text_into_active_window(full_command):
             print(f"❌ Typing task failed: {e}")
 
     threading.Thread(target=typing_task).start()
-# 🧾 List UI elements
+
 def list_ui_elements():
     try:
         elements = client.get_ui_elements()
@@ -229,7 +220,6 @@ def list_ui_elements():
     except Exception as e:
         return f"❌ Failed to list UI elements: {e}"
 
-# 🪟 Get active app name
 def get_active_app_name():
     try:
         app_element = client.locator("app").first()
@@ -238,7 +228,6 @@ def get_active_app_name():
         print(f"❌ Failed to get active app name: {e}")
         return None
 
-# 🪟 Get active window title
 def get_active_window_title():
     try:
         window_element = client.locator("window").first()
@@ -247,7 +236,6 @@ def get_active_window_title():
         print(f"❌ Failed to get active window title: {e}")
         return None
 
-# 🚀 Launch app via Terminator
 def launch_app_via_terminator(app_name):
     try:
         client.open_application(app_name)

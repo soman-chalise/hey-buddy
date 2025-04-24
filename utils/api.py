@@ -52,7 +52,7 @@ def rule_based_classify_command(cmd: str) -> str:
     cmd = cmd.lower().strip()
     cmd = re.sub(r'^"|"$', '', cmd).strip()
 
-    # 🎯 Prioritize ending-based screen phrases
+
     screen_phrases = [
         "on my screen", "on the screen", "in the screen", 
         "what's on my screen", "what is on the screen", "solve on screen"
@@ -158,6 +158,7 @@ def analyze_search_command(command):
         return result
 
     return {"type": "unknown"}
+
 def is_screen_vision_command(cmd: str) -> bool:
     cmd = cmd.lower().strip()
     screen_phrases = [

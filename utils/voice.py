@@ -8,13 +8,13 @@ def listen_and_transcribe(language="en-US", retries=10):
         with mic as source:
             print(f"🎤 Listening for command in {language}...")
 
-            recognizer.adjust_for_ambient_noise(source, duration=1)  # 🧠 Use background noise calibration
+            recognizer.adjust_for_ambient_noise(source, duration=1)  
 
             try:
                 audio = recognizer.listen(
                     source,
-                    timeout=5,           # Wait max 5s for speech to start
-                    phrase_time_limit=15  # Allow up to 15s of speech
+                    timeout=5,         
+                    phrase_time_limit=15  
                 )
                 print(f"📝 Transcribing speech in {language}...")
                 text = recognizer.recognize_google(audio, language=language)

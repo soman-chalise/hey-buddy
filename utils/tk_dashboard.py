@@ -68,7 +68,7 @@ def aggregate(logs):
         duration_str = entry.get("duration")
 
         if not title or not duration_str:
-            continue  # Skip malformed or incomplete logs
+            continue  
 
         base_app = title.split(" - ")[-1]
         duration = parse_duration(duration_str)

@@ -44,7 +44,6 @@ def analyze_screen_with_groq_vision(prompt="What's on my screen?", image_path=No
         "Content-Type": "application/json"
     }
 
-    # Use appropriate system prompt
     if (mode == "screen_qa"):
         system_prompt = SCREEN_QA_PROMPT  
     else:
