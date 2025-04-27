@@ -78,8 +78,8 @@ github-:
 
 ## 📽️ Demo & Deliverables
 
-- **Demo Video Link:** [Paste YouTube or Loom link here]  
-- **Pitch Deck / PPT Link:** [Paste Google Slides / PDF link here]  
+- **Demo Video Link:** [[Paste YouTube or Loom link here](https://youtu.be/X3JBMkBFFiE?feature=shared)]  
+- **Pitch Deck / PPT Link:** [[Paste Google Slides / PDF link here](https://docs.google.com/presentation/d/1-d6lFQoo53uQuGBg2Z5a1av4785N9nZ7/edit?usp=sharing&ouid=113895557266537923269&rtpof=true&sd=true)]
 
 ---
 
@@ -89,13 +89,16 @@ github-:
 - [✅] **All members of the team completed Bonus Task 1 - Sharing of Badges and filled the form (2 points)**  (Details in Participant Manual)
 - [✅] **All members of the team completed Bonus Task 2 - Signing up for Sprint.dev and filled the form (3 points)**  (Details in Participant Manual)
 
-
+---
+REQUIREMENTS:
+Groq api key
 ---
 
 ## 🧪 How to Run the Project
 
-download the zip file from here -->https://drive.google.com/drive/folders/1uebjRkfL3rXRkdGpW6AaCQFbWsrY44KI?usp=drive_link
+download the zip file from here --> https://drive.google.com/drive/folders/1uebjRkfL3rXRkdGpW6AaCQFbWsrY44KI?usp=sharing
 extract the zip file in desktop there you will get a folder named groq_ai_assistent
+inside the folder there is a .env file paste your api key over there ()
 inside the folder there is another folder hey_buddy
 inside hey_buddy folder there is a hey_buddy.exe
 double click the exe (dont get impatent and click multiple time) and wait for 2-3 min it will automatically setup everything
