@@ -98,7 +98,7 @@ Groq api key
 
 download the zip file from here --> https://drive.google.com/drive/folders/1uebjRkfL3rXRkdGpW6AaCQFbWsrY44KI?usp=sharing
 extract the zip file in desktop there you will get a folder named groq_ai_assistent 
-inside the folder there is a .env file paste your api key over there ()
+inside the folder there is a .env file paste your api key over there (eg: GROQ_API_KEY="your api key")
 inside the folder there is another folder hey_buddy
 inside hey_buddy folder there is a hey_buddy.exe
 double click the exe (dont get impatent and click multiple time) and wait for 2-3 min it will automatically setup everything
