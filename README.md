@@ -94,25 +94,16 @@ github-:
 
 ## 🧪 How to Run the Project
 
-### Requirements:
-- Node.js / Python / Docker / etc.
-- API Keys (if any)
-- .env file setup (if needed)
+download the zip file from here -->https://drive.google.com/drive/folders/1uebjRkfL3rXRkdGpW6AaCQFbWsrY44KI?usp=drive_link
+extract the zip file in desktop there you will get a folder named groq_ai_assistent
+inside the folder there is another folder hey_buddy
+inside hey_buddy folder there is a hey_buddy.exe
+double click the exe (dont get impatent and click multiple time) and wait for 2-3 min it will automatically setup everything
+run the server.exe to access screenpipe terminator features (ui interaction , opeaning apps etc)
+and everything is set 
+say "hey buddy"  if a popup appears in the bottom right corner then everything is done correctly
+check out the ppt or the demo video for all the features 
 
-### Local Setup:
-```bash
-# Clone the repo
-git clone https://github.com/your-team/project-name
-
-# Install dependencies
-cd project-name
-npm install
-
-# Start development server
-npm run dev
-```
-
-Provide any backend/frontend split or environment setup notes here.
 
 ---
 
