@@ -6,43 +6,32 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import speech_recognition as sr
+
 def listen_for_wake_word():
-    print("🎙️ Listening for custom wake word...")
+    print("🎙️ Listening for wake phrase: 'hey buddy'")
 
-    access_key = os.getenv("PICOVOICE_KEY")
-    keyword_path = os.path.join("assets", "wake_word", "hey-buddy.ppn")
+    recognizer = sr.Recognizer()
+    mic = sr.Microphone()
 
-    if not os.path.exists(keyword_path):
-        print(f"❌ Wake word file not found at: {keyword_path}")
-        return False
+    with mic as source:
+        recognizer.adjust_for_ambient_noise(source)
+        print("📢 Adjusted for ambient noise. Ready...")
 
-    porcupine = pvporcupine.create(
-        access_key=access_key,
-        keyword_paths=[keyword_path]  
-    )
-
-    pa = pyaudio.PyAudio()
-    stream = pa.open(
-        format=pyaudio.paInt16,
-        channels=1,
-        rate=porcupine.sample_rate,
-        input=True,
-        frames_per_buffer=porcupine.frame_length
-    )
-
-    try:
         while True:
-            audio_data = stream.read(porcupine.frame_length, exception_on_overflow=False)
-            pcm = struct.unpack_from("h" * porcupine.frame_length, audio_data)
+            try:
+                print("🎧 Listening...")
+                audio = recognizer.listen(source, phrase_time_limit=30000)
+                text = recognizer.recognize_google(audio).lower()
+                print(f"🗣️ Heard: {text}")
 
-            result = porcupine.process(pcm)
-            if result >= 0:
-                print("👂 Wake word detected!")
-                return True
-    except KeyboardInterrupt:
-        print("👋 Wake word detection stopped manually.")
-    finally:
-        stream.stop_stream()
-        stream.close()
-        pa.terminate()
-        porcupine.delete()
+                if "hey buddy" in text:
+                    print("👂 Wake phrase detected!")
+                    return True
+            except sr.UnknownValueError:
+                # Didn't understand audio
+                pass
+            except sr.RequestError as e:
+                print(f"❌ Could not request results; {e}")
+                break
+
