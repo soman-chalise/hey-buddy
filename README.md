@@ -97,7 +97,7 @@ Groq api key
 ## 🧪 How to Run the Project
 
 download the zip file from here --> https://drive.google.com/drive/folders/1uebjRkfL3rXRkdGpW6AaCQFbWsrY44KI?usp=sharing
-extract the zip file in desktop there you will get a folder named groq_ai_assistent "\n"
+extract the zip file in desktop there you will get a folder named groq_ai_assistent 
 inside the folder there is a .env file paste your api key over there ()
 inside the folder there is another folder hey_buddy
 inside hey_buddy folder there is a hey_buddy.exe
