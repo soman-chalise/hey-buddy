@@ -65,7 +65,8 @@ def listen_for_commands():
         ui_root.deiconify()
         ui_root.update_idletasks()
         ui_root.update()
-        show_response("")  
+        show_response("")
+        show_listening()  # Now this happens after popup is visible
 
 
         show_listening()
