@@ -80,6 +80,8 @@ github-:
 
 - **Demo Video Link:** [[Paste YouTube or Loom link here](https://youtu.be/X3JBMkBFFiE?feature=shared)]  
 - **Pitch Deck / PPT Link:** [[Paste Google Slides / PDF link here](https://docs.google.com/presentation/d/1-d6lFQoo53uQuGBg2Z5a1av4785N9nZ7/edit?usp=sharing&ouid=113895557266537923269&rtpof=true&sd=true)]
+- **Demo Video Link:** [[Paste YouTube or Loom link here](https://youtu.be/X3JBMkBFFiE?feature=shared)]  
+- **Pitch Deck / PPT Link:** [[Paste Google Slides / PDF link here](https://docs.google.com/presentation/d/1-d6lFQoo53uQuGBg2Z5a1av4785N9nZ7/edit?usp=sharing&ouid=113895557266537923269&rtpof=true&sd=true)]
 
 ---
 
@@ -89,6 +91,9 @@ github-:
 - [✅] **All members of the team completed Bonus Task 1 - Sharing of Badges and filled the form (2 points)**  (Details in Participant Manual)
 - [✅] **All members of the team completed Bonus Task 2 - Signing up for Sprint.dev and filled the form (3 points)**  (Details in Participant Manual)
 
+---
+REQUIREMENTS:
+Groq api key
 ---
 REQUIREMENTS:
 Groq api key
